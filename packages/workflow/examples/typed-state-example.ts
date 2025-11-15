@@ -6,7 +6,9 @@
  */
 
 import { z } from 'zod';
-import { createWorkflow, createStep } from '@mediar-ai/workflow';
+import * as workflowLib from '@mediar-ai/workflow';
+
+const { createWorkflow, createStep } = workflowLib;
 
 // Define workflow input schema
 const inputSchema = z.object({

@@ -1,0 +1,10 @@
+{
+  "name": "@mediar-ai/workflow-examples",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mediar-ai/workflow": "file:..",
+    "tsx": "^4.19.0"
+  }
+}
+

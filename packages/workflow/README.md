@@ -11,35 +11,35 @@ npm install @mediar-ai/workflow zod
 ## Quick Start
 
 ```typescript
-import { createStep, createWorkflow, z } from '@mediar-ai/workflow';
+import { createStep, createWorkflow, z } from "@mediar-ai/workflow";
 
 // Define input schema
 const InputSchema = z.object({
-  userName: z.string().default('World'),
+  userName: z.string().default("World"),
 });
 
 // Create steps
 const openApp = createStep({
-  id: 'open-app',
-  name: 'Open Notepad',
+  id: "open-app",
+  name: "Open Notepad",
   execute: async ({ desktop }) => {
-    desktop.openApplication('notepad');
+    desktop.openApplication("notepad");
     await desktop.wait(2000);
   },
 });
 
 const typeGreeting = createStep({
-  id: 'type-greeting',
-  name: 'Type Greeting',
+  id: "type-greeting",
+  name: "Type Greeting",
   execute: async ({ desktop, input }) => {
-    const textbox = desktop.locator('role:Edit');
+    const textbox = desktop.locator("role:Edit");
     await textbox.type(`Hello, ${input.userName}!`);
   },
 });
 
 // Create workflow
 const workflow = createWorkflow({
-  name: 'Simple Demo',
+  name: "Simple Demo",
   input: InputSchema,
 })
   .step(openApp)
@@ -47,7 +47,7 @@ const workflow = createWorkflow({
   .build();
 
 // Run it
-workflow.run({ userName: 'Alice' });
+workflow.run({ userName: "Alice" });
 ```
 
 ## Features
@@ -58,7 +58,7 @@ Full TypeScript support with Zod schemas:
 
 ```typescript
 const InputSchema = z.object({
-  jsonFile: z.string().describe('Path to JSON file'),
+  jsonFile: z.string().describe("Path to JSON file"),
   maxRetries: z.number().default(3).min(0).max(10),
   sendEmail: z.boolean().default(true),
 });
@@ -76,8 +76,8 @@ const step = createStep({
     // Your logic
   },
   onError: async ({ error, retry, attempt }) => {
-    if (error.message.includes('temporary')) {
-      await new Promise(r => setTimeout(r, 1000 * attempt));
+    if (error.message.includes("temporary")) {
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
       return retry();
     }
     return { recoverable: false };
@@ -139,6 +139,7 @@ const workflow = createWorkflow({ ... })
 Creates a workflow step.
 
 **Parameters:**
+
 - `config.id` - Unique step identifier
 - `config.name` - Human-readable name
 - `config.description` - Optional description
@@ -152,12 +153,14 @@ Creates a workflow step.
 Creates a workflow builder.
 
 **Parameters:**
+
 - `config.name` - Workflow name
 - `config.description` - Optional description
 - `config.version` - Optional version
 - `config.input` - Zod input schema
 
 **Methods:**
+
 - `.step(step)` - Add a step
 - `.onSuccess(handler)` - Set success handler
 - `.onError(handler)` - Set error handler
@@ -169,6 +172,10 @@ See `examples/typescript-workflow/` for complete examples:
 
 - `simple-workflow.ts` - Basic pattern
 - `production-workflow.ts` - Real-world with error recovery
+
+Additional standalone samples:
+
+- `packages/workflow/examples/pypi-release-pruner.ts` – Automates PyPI UI with TOTP and deletes the oldest release before publishing new artifacts.
 
 ## License
 

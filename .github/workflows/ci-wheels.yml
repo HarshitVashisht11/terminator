@@ -169,10 +169,74 @@ jobs:
         with:
           path: packages/terminator-python/
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: terminator-repo
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: 'packages/terminator-python/wheels-*/*.whl'
+
+      - name: Set up Rust (Terminator CLI)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          cache: true
+
+      - name: Install Terminator CLI
+        run: |
+          cargo install --locked --path terminator-repo/crates/terminator-cli --force
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Delete oldest PyPI release (Terminator workflow)
+        if: ${{ secrets.PYPI_USERNAME && secrets.PYPI_PASSWORD && secrets.PYPI_TOTP_SECRET && (secrets.TERMINATOR_MCP_URL || secrets.TERMINATOR_MCP_COMMAND) }}
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          PYPI_TOTP_SECRET: ${{ secrets.PYPI_TOTP_SECRET }}
+          PYPI_PROJECT_SLUG: ${{ secrets.PYPI_PROJECT_SLUG }}
+          PYPI_MAX_RELEASES: ${{ vars.PYPI_MAX_RELEASES }}
+          PYPI_ALWAYS_DELETE_OLDEST: ${{ vars.PYPI_ALWAYS_DELETE_OLDEST }}
+          MCP_URL: ${{ secrets.TERMINATOR_MCP_URL }}
+          MCP_COMMAND: ${{ secrets.TERMINATOR_MCP_COMMAND }}
+        run: |
+          cd terminator-repo
+          INPUTS=$(node - <<'NODE'
+const payload = {
+  username: process.env.PYPI_USERNAME,
+  password: process.env.PYPI_PASSWORD,
+  totpSecret: process.env.PYPI_TOTP_SECRET,
+  projectSlug: process.env.PYPI_PROJECT_SLUG || 'terminator',
+};
+
+if (process.env.PYPI_MAX_RELEASES) {
+  const parsed = Number(process.env.PYPI_MAX_RELEASES);
+  if (!Number.isNaN(parsed) && parsed > 0) {
+    payload.maxReleasesBeforeDelete = parsed;
+  }
+}
+
+if (process.env.PYPI_ALWAYS_DELETE_OLDEST) {
+  payload.alwaysDeleteOldest =
+    process.env.PYPI_ALWAYS_DELETE_OLDEST.toLowerCase() !== 'false';
+}
+
+process.stdout.write(JSON.stringify(payload));
+NODE
+)
+
+          CLI_ARGS=()
+          if [ -n "$MCP_URL" ]; then
+            CLI_ARGS+=(--url "$MCP_URL")
+          fi
+          if [ -n "$MCP_COMMAND" ]; then
+            CLI_ARGS+=(--command "$MCP_COMMAND")
+          fi
+
+          terminator mcp run packages/workflow/examples/pypi-release-pruner.ts "${CLI_ARGS[@]}" --skip-type-check --inputs "$INPUTS"
 
       - name: Publish to PyPI (terminator-py)
         uses: PyO3/maturin-action@v1
@@ -182,11 +246,6 @@ jobs:
           working-directory: packages/terminator-python
           command: upload
           args: --non-interactive --skip-existing wheels-sdist/* wheels-windows-x64/* wheels-windows-arm64/* wheels-linux-x86_64/*
-
-      - name: Checkout code for package rename
-        uses: actions/checkout@v4
-        with:
-          path: terminator-repo
 
       - name: Setup Python
         uses: actions/setup-python@v5
